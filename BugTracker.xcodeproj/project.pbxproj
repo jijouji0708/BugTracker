@@ -29,20 +29,43 @@
 		AED832892EE1CA88009D77ED /* BugTrackerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BugTrackerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		AED832D72EE1D37F009D77ED /* Exceptions for "App" folder in "BugTracker" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = AED832712EE1CA87009D77ED /* BugTracker */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		AED832742EE1CA87009D77ED /* BugTracker */ = {
+		AED832742EE1CA87009D77ED /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = BugTracker;
+			exceptions = (
+				AED832D72EE1D37F009D77ED /* Exceptions for "App" folder in "BugTracker" target */,
+			);
+			path = App;
 			sourceTree = "<group>";
 		};
-		AED832822EE1CA88009D77ED /* BugTrackerTests */ = {
+		AED8329F2EE1CBE8009D77ED /* Core */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = BugTrackerTests;
+			path = Core;
 			sourceTree = "<group>";
 		};
-		AED8328C2EE1CA88009D77ED /* BugTrackerUITests */ = {
+		AED832A62EE1CC0D009D77ED /* Models */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = BugTrackerUITests;
+			path = Models;
+			sourceTree = "<group>";
+		};
+		AED832AA2EE1CC39009D77ED /* ViewModel */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ViewModel;
+			sourceTree = "<group>";
+		};
+		AED832B22EE1CC7A009D77ED /* Views */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Views;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -75,9 +98,11 @@
 		AED832692EE1CA87009D77ED = {
 			isa = PBXGroup;
 			children = (
-				AED832742EE1CA87009D77ED /* BugTracker */,
-				AED832822EE1CA88009D77ED /* BugTrackerTests */,
-				AED8328C2EE1CA88009D77ED /* BugTrackerUITests */,
+				AED832B22EE1CC7A009D77ED /* Views */,
+				AED832AA2EE1CC39009D77ED /* ViewModel */,
+				AED832A62EE1CC0D009D77ED /* Models */,
+				AED8329F2EE1CBE8009D77ED /* Core */,
+				AED832742EE1CA87009D77ED /* App */,
 				AED832732EE1CA87009D77ED /* Products */,
 			);
 			sourceTree = "<group>";
@@ -108,7 +133,11 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				AED832742EE1CA87009D77ED /* BugTracker */,
+				AED832742EE1CA87009D77ED /* App */,
+				AED8329F2EE1CBE8009D77ED /* Core */,
+				AED832A62EE1CC0D009D77ED /* Models */,
+				AED832AA2EE1CC39009D77ED /* ViewModel */,
+				AED832B22EE1CC7A009D77ED /* Views */,
 			);
 			name = BugTracker;
 			packageProductDependencies = (
@@ -130,9 +159,6 @@
 			dependencies = (
 				AED832812EE1CA88009D77ED /* PBXTargetDependency */,
 			);
-			fileSystemSynchronizedGroups = (
-				AED832822EE1CA88009D77ED /* BugTrackerTests */,
-			);
 			name = BugTrackerTests;
 			packageProductDependencies = (
 			);
@@ -152,9 +178,6 @@
 			);
 			dependencies = (
 				AED8328B2EE1CA88009D77ED /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				AED8328C2EE1CA88009D77ED /* BugTrackerUITests */,
 			);
 			name = BugTrackerUITests;
 			packageProductDependencies = (
@@ -400,6 +423,7 @@
 				DEVELOPMENT_TEAM = WLU3DRHKX7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "映像解析のためにカメラを使用します";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -432,6 +456,7 @@
 				DEVELOPMENT_TEAM = WLU3DRHKX7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "映像解析のためにカメラを使用します";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

@@ -3,22 +3,18 @@ import SwiftUI
 import Observation
 
 @Observable
-final class VisionSystem: NSObject {
-    // UI State
+final class ScannerViewModel: NSObject {
     var isRunning = false
     var sensitivity: Double = 50.0
-    var trackedEntities: [TrackedEntity] = []
-    var detectionCount: Int = 0
+    var trackedObjects: [TrackedObject] = []
     
-    // Camera Session
+    // UI用のカウント
+    var objectCount: Int { trackedObjects.count }
+    
     let session = AVCaptureSession()
-    private let output = AVCaptureVideoDataOutput()
-    private let processingQueue = DispatchQueue(label: "com.bugtracker.vision", qos: .userInteractive)
-    
-    // Internal Processing State (Thread-Confined to processingQueue)
-    private var prevBuffer: [UInt8]?
-    private var internalTracks: [TrackedEntity] = []
-    private var nextId: Int = 1
+    private let videoOutput = AVCaptureVideoDataOutput()
+    private let motionLogic = MotionLogic()
+    private let cameraQueue = DispatchQueue(label: "com.bugtracker.camera", qos: .userInteractive)
     
     override init() {
         super.init()
@@ -26,93 +22,73 @@ final class VisionSystem: NSObject {
     }
     
     private func setupCamera() {
-        session.sessionPreset = .vga640x480
+        session.sessionPreset = .high
+        
         guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
               let input = try? AVCaptureDeviceInput(device: device) else { return }
         
         if session.canAddInput(input) { session.addInput(input) }
         
-        output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
-        output.setSampleBufferDelegate(self, queue: processingQueue)
+        videoOutput.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+        videoOutput.setSampleBufferDelegate(self, queue: cameraQueue)
         
-        if session.canAddOutput(output) { session.addOutput(output) }
+        if session.canAddOutput(videoOutput) {
+            session.addOutput(videoOutput)
+            if let connection = videoOutput.connection(with: .video) {
+                if connection.isVideoOrientationSupported {
+                    connection.videoOrientation = .portrait
+                }
+            }
+        }
     }
     
-    func toggleSystem() {
-        if isRunning {
-            stop()
-        } else {
-            start()
-        }
+    func toggleScan() {
+        if isRunning { stop() } else { start() }
     }
     
     private func start() {
-        Task.detached {
-            await self.session.startRunning()
-        }
+        Task.detached { await self.session.startRunning() }
         isRunning = true
     }
     
     private func stop() {
-        Task.detached {
-            await self.session.stopRunning()
-        }
+        Task.detached { await self.session.stopRunning() }
         isRunning = false
-        // リセット処理
-        processingQueue.async { [weak self] in
-            self?.prevBuffer = nil
-            self?.internalTracks = []
-            self?.nextId = 1
-            Task { @MainActor in
-                self?.trackedEntities = []
-                self?.detectionCount = 0
-            }
-        }
+        Task { @MainActor in self.trackedObjects = [] }
+        Task { await self.motionLogic.reset() }
     }
 }
 
-// Delegate
-extension VisionSystem: AVCaptureVideoDataOutputSampleBufferDelegate {
+extension ScannerViewModel: AVCaptureVideoDataOutputSampleBufferDelegate {
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        guard let grayData = BufferUtils.extractGrayscaleData(from: pixelBuffer) else { return }
         
-        // メインスレッドのプロパティに直接アクセスしないように注意 (Swift 6 strictness)
-        // ここはprocessingQueue上で呼ばれる
-        
-        // 1. データ抽出
-        guard let grayData = pixelBuffer.toGrayscaleData(width: Config.processWidth, height: Config.processHeight) else { return }
-        
-        // 2. MainActorのステートをキャプチャ（非同期でアクセスするため）
-        // 注意: @Observableのプロパティはスレッドセーフではないため、処理に必要な値はキュー内で管理するか、
-        // 単純な値ならTaskで取得する。ここでは内部ステート(internalTracks)を使うため安全。
-        
-        Task { @MainActor in
-            // 感度のみUIから取得
-            let sens = self.sensitivity
+        Task {
+            // 【重要】スライダーの値をロジック用のパラメータに変換
+            let currentSensitivity = await MainActor.run { self.sensitivity }
             
-            // 計算キューへ戻す
-            self.processingQueue.async { [weak self] in
-                guard let self = self else { return }
-                
-                // 計算実行
-                let result = MotionProcessor.compute(
-                    buffer: grayData,
-                    prevBuffer: self.prevBuffer,
-                    currentTracks: self.internalTracks,
-                    nextId: self.nextId,
-                    sensitivity: sens
-                )
-                
-                // 内部状態更新
-                self.prevBuffer = grayData
-                self.internalTracks = result.tracks
-                self.nextId = result.nextId
-                
-                // UI更新 (MainActor)
-                Task { @MainActor in
-                    self.trackedEntities = result.tracks
-                    self.detectionCount = result.validCount
-                }
+            // 1. 動きの閾値 (閾値が低いほど、小さな動きも拾う)
+            // 感度100 -> 閾値0.5 (超敏感)
+            // 感度1   -> 閾値6.0 (鈍感)
+            let threshold = 6.0 - (currentSensitivity / 100.0) * 5.5
+            
+            // 2. 最小サイズ (サイズが小さいほど、小さな点も拾う)
+            // 感度90以上 -> 1ブロック(点)でもOK
+            // 感度50以下 -> 3ブロック以上の塊が必要
+            let minSize = currentSensitivity > 90 ? 1 : (currentSensitivity > 50 ? 2 : 3)
+            
+            let result = await motionLogic.process(
+                currentFrame: grayData,
+                width: Constants.processWidth,
+                height: Constants.processHeight,
+                motionThreshold: threshold, // ここに渡す
+                minSize: minSize            // ここに渡す
+            )
+            
+            await MainActor.run {
+                guard self.isRunning else { return }
+                self.trackedObjects = result.tracks
             }
         }
     }
