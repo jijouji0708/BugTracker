@@ -6,63 +6,63 @@ struct ControlPanel: View {
     let isRunning: Bool
     let onToggle: () -> Void
     
-    // ピクセルサイズ換算 (UI表示用)
-    var minPxSize: Int {
-        Int(50 - (sensitivity / 100.0) * 48)
-    }
-    
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(alignment: .center, spacing: 20) {
             
-            // 1. 検知数カウンター (日本語)
-            HStack(alignment: .bottom, spacing: 4) {
-                Text(String(format: "%03d", count))
-                    .font(.system(size: 24, weight: .bold, design: .monospaced))
-                    .foregroundColor(CyberpunkStyle.primaryColor)
-                    .contentTransition(.numericText(value: Double(count)))
-                    .shadow(color: CyberpunkStyle.primaryColor.opacity(0.6), radius: 4)
+            // 1. 検知数
+            VStack(alignment: .leading, spacing: 2) {
+                Text("検知数")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.secondary)
                 
-                Text("検知")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(CyberpunkStyle.dimColor)
-                    .offset(y: -4)
+                Text("\(count)")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                    .contentTransition(.numericText(value: Double(count)))
             }
-            .frame(minWidth: 60, alignment: .leading)
+            .frame(width: 60, alignment: .leading)
             
-            // 2. 感度スライダー (日本語ラベル付き)
-            VStack(alignment: .leading, spacing: 0) {
-                Text("最小サイズ: \(minPxSize) px")
-                    .font(.system(size: 9, weight: .bold, design: .monospaced))
-                    .foregroundColor(CyberpunkStyle.primaryColor.opacity(0.8))
+            // 2. 感度設定
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text("感度設定")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(Int(sensitivity))")
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(.primary)
+                }
                 
                 Slider(value: $sensitivity, in: 1...100)
-                    .tint(CyberpunkStyle.primaryColor)
+                    .tint(isRunning ? .green : .blue)
             }
             .frame(maxWidth: .infinity)
             
-            // 3. 電源ボタン (アイコンのみ)
+            // 3. 開始/停止ボタン (大きく明確に)
             Button(action: onToggle) {
-                Image(systemName: "power")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(isRunning ? .black : CyberpunkStyle.primaryColor)
-                    .frame(width: 44, height: 44)
-                    .background(isRunning ? CyberpunkStyle.primaryColor : Color.black.opacity(0.6))
-                    .clipShape(Circle())
-                    .overlay(
-                        Circle()
-                            .stroke(CyberpunkStyle.primaryColor, lineWidth: 1)
-                    )
-                    .shadow(color: isRunning ? CyberpunkStyle.primaryColor : .clear, radius: 8)
+                ZStack {
+                    Circle()
+                        .fill(isRunning ? Color.red : Color.green)
+                        .frame(width: 56, height: 56)
+                        .shadow(color: (isRunning ? Color.red : Color.green).opacity(0.4), radius: 8, x: 0, y: 4)
+                    
+                    VStack(spacing: 2) {
+                        Image(systemName: isRunning ? "stop.fill" : "play.fill")
+                            .font(.system(size: 20, weight: .bold))
+                        Text(isRunning ? "停止" : "開始")
+                            .font(.system(size: 10, weight: .bold))
+                    }
+                    .foregroundColor(.white)
+                }
             }
         }
-        .padding(12)
-        .padding(.horizontal, 4)
-        .background(.ultraThinMaterial)
-        .clipShape(Capsule()) // 角丸を強くしてカプセル型に
-        .overlay(
-            Capsule()
-                .stroke(CyberpunkStyle.dimColor, lineWidth: 1)
-        )
-        .padding(.horizontal)
+        .padding(16)
+        .background {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(.regularMaterial)
+                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+        }
+        .padding(.horizontal, 16)
     }
 }

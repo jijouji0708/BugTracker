@@ -9,6 +9,7 @@ struct TrackedObject: Identifiable, Sendable {
     var velocity: SIMD2<Double>
     var colorHue: Double
     var path: [SIMD3<Double>] // x, y, size
+    var confidence: Double = 0.0
     
     var uiColor: Color {
         Color(hue: colorHue, saturation: 1.0, brightness: 1.0)

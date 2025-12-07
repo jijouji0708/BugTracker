@@ -8,6 +8,8 @@ final class ScannerViewModel: NSObject {
     var sensitivity: Double = 50.0
     var trackedObjects: [TrackedObject] = []
     
+    var isMotionSuppressed = false
+    
     // UI用のカウント
     var objectCount: Int { trackedObjects.count }
     
@@ -54,7 +56,10 @@ final class ScannerViewModel: NSObject {
     private func stop() {
         Task.detached { await self.session.stopRunning() }
         isRunning = false
-        Task { @MainActor in self.trackedObjects = [] }
+        Task { @MainActor in 
+            self.trackedObjects = []
+            self.isMotionSuppressed = false
+        }
         Task { await self.motionLogic.reset() }
     }
 }
@@ -68,27 +73,25 @@ extension ScannerViewModel: AVCaptureVideoDataOutputSampleBufferDelegate {
             // 【重要】スライダーの値をロジック用のパラメータに変換
             let currentSensitivity = await MainActor.run { self.sensitivity }
             
-            // 1. 動きの閾値 (閾値が低いほど、小さな動きも拾う)
-            // 感度100 -> 閾値0.5 (超敏感)
-            // 感度1   -> 閾値6.0 (鈍感)
-            let threshold = 6.0 - (currentSensitivity / 100.0) * 5.5
+            // 感度をそのままアルゴリズムに渡す（アルゴリズム側で変換）
+            // 感度100 = 非常に敏感、感度1 = 鈍感
+            let threshold = currentSensitivity
             
-            // 2. 最小サイズ (サイズが小さいほど、小さな点も拾う)
-            // 感度90以上 -> 1ブロック(点)でもOK
-            // 感度50以下 -> 3ブロック以上の塊が必要
-            let minSize = currentSensitivity > 90 ? 1 : (currentSensitivity > 50 ? 2 : 3)
+            // 最小サイズ（使用しないが互換性のため）
+            let minSize = 20
             
             let result = await motionLogic.process(
                 currentFrame: grayData,
                 width: Constants.processWidth,
                 height: Constants.processHeight,
-                motionThreshold: threshold, // ここに渡す
-                minSize: minSize            // ここに渡す
+                motionThreshold: threshold,
+                minSize: minSize
             )
             
             await MainActor.run {
                 guard self.isRunning else { return }
                 self.trackedObjects = result.tracks
+                self.isMotionSuppressed = result.isSuppressed
             }
         }
     }
